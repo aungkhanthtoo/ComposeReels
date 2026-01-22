@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
@@ -73,21 +74,24 @@ fun VideoPager(
 
         var player by remember { mutableStateOf<Player?>(null) }
 
-        LaunchedEffect(pagerState.currentPage, page) {
-            if (page == pagerState.currentPage) {
-                val url = videoUrls[pagerState.currentPage]
-                val pagePlayer = playerPool.getPlayerForPage(page)
-                pagePlayer.playWhenReady = false
-                pagePlayer.clearMediaItems()
-                pagePlayer.setMediaItem(MediaItem.fromUri(url))
-                pagePlayer.prepare()
-                pagePlayer.setPlaybackSpeed(5.0f)
-                pagePlayer.playWhenReady = true
-                player = pagePlayer
-            } else {
-                player?.playWhenReady = false
-                player?.stop()
+        LaunchedEffect(page) {
+            snapshotFlow { pagerState.settledPage }.collect { settledPage ->
+                if (page == settledPage) {
+                    val url = videoUrls[settledPage]
+                    val pagePlayer = playerPool.getPlayerForPage(page)
+                    pagePlayer.playWhenReady = false
+                    pagePlayer.clearMediaItems()
+                    pagePlayer.setMediaItem(MediaItem.fromUri(url))
+                    pagePlayer.prepare()
+                    pagePlayer.setPlaybackSpeed(5.0f)
+                    pagePlayer.playWhenReady = true
+                    player = pagePlayer
+                } else {
+                    player?.playWhenReady = false
+                    player?.stop()
+                }
             }
+
         }
 
         player?.let {
